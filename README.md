@@ -1,8 +1,6 @@
-# py-exceptions
+# py-exceptions [![PyPI version](https://badge.fury.io/py/py-exception.svg)](https://badge.fury.io/py/py-exception)
 
 ## *A simple python exception reporter*
-
-[![PyPI version](https://badge.fury.io/py/py-exception.svg)](https://badge.fury.io/py/py-exception)
 
 ### Description
 
