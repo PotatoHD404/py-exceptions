@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(
-	name='py-exception',
+	name='pyexceptions',
 	version='1.0.0',
-	url='https://github.com/PotatoHD404/py-exception',
+	url='https://github.com/PotatoHD404/py-exceptions',
 	description='A simple python exception reporter',
 	author='PotatoHD404',
 	license='MIT',
@@ -14,8 +14,8 @@ setup(
 		'Programming Language :: Python :: 3.8',
 		'Programming Language :: Python :: 3.9',
 	],
-	keywords='py-exception',
-	packages=['py-exception'],
+	keywords='py-exceptions',
+	packages=['pyexceptions'],
 	install_requires=[
 		'Werkzeug>=2.0.1',
 		'Jinja2'
