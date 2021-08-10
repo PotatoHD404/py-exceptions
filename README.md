@@ -2,89 +2,162 @@
 
 ## *A simple python exception reporter*
 
-[![NPM version](https://img.shields.io/npm/v/@potatohd/vercel-package-installer.svg)](https://pypi.org/project/py-extensions/)
+[![PyPI version](https://badge.fury.io/py/py-exception.svg)](https://badge.fury.io/py/py-exception)
+
+### Description
+
+This library provides great stacktrace and
+web request information like Django does
+It can save it to html, return html to your code or
+even response in AWS lambda format
+
+The library nicely covers all your secret variables and
+request data in it's report
+
+### Screenshots
+
+![Beautiful image](https://github.com/PotatoHD404/py-exceptions/blob/dev/image.jpg?raw=true)
 
 ## Quickstart
 
-If you have an existing WSGI app, getting this builder to work for you is a
-piece of 🍰!
+### Installation
 
-### 1. Add a Vercel configuration
-
-Add a `vercel.json` file to the root of your application:
-
-```json
-{
-    "builds": [{
-        "src": "index.py",
-        "use": "@potatohd/vercel-package-installer1",
-        "config": { "maxLambdaSize": "15mb" }
-    }]
-}
+```sh
+pip install py-exception
 ```
 
-This configuration is doing a few things in the `"builds"` part:
+### Simple example
 
-1. `"src": "index.py"`
-   This tells Now that there is one entrypoint to build for. `index.py` is a
-   file we'll create shortly.
-2. `"use": "@potatohd/vercel-package-installer1"`
-   Tell Now to use this builder when deploying your application
-3. `"config": { "maxLambdaSize": "15mb" }`
-   Bump up the maximum size of the built application to accommodate some larger
-   python WSGI libraries (like Django or Flask). This may not be necessary for
-   you.
-
-### 2. Add a Now entrypoint
-
-Add `index.py` to the root of your application. This entrypoint should make
-available an object named `application` that is an instance of your WSGI
-application. E.g.:
+Add decorator to function
 
 ```python
-# For a Dango app
-from django_app.wsgi import application
-# Replace `django_app` with the appropriate name to point towards your project's
-# wsgi.py file
+from pyexceptions import handle_exceptions
+
+def devide(a, b):
+    return a / b
+
+@handle_exceptions
+def main():
+    i = 5
+    j = 0
+    c = devide(i, j)
+    print(c)
+
+if __name__ == '__main__':
+    main()
 ```
 
-Look at your framework documentation for help getting access to the WSGI
-application.
+You can also override folder for exception reports
 
-If the WSGI instance isn't named `application` you can set the
-`wsgiApplicationName` configuration option to match your application's name (see
-the configuration section below).
+```python
+from pyexceptions import handle_exceptions
 
-### 3. Deploy
+def devide(a, b):
+    return a / b
 
-That's it, you're ready to go:
+@handle_exceptions(exceptions_floder='./SomeFolderPath')
+def main():
+    i = 5
+    j = 0
+    c = devide(i, j)
+    print(c)
 
-```console
-$ vercel
-> Deploying python-wsgi-app
-...
-> Success! Deployment ready [57s]
+if __name__ == '__main__':
+    main()
 ```
 
-### Avoiding the `index.py` file
+### AWS Lambda example
 
-If having an extra file in your project is troublesome or seems unecessary, it's
-also possible to configure Now to use your application directly, without passing
-it through `index.py`.
+It is hard to determine what's went wrong when you are using
+AWS lambda. So you can use the example not only to get full stacktrace
+but to get lambda event and context information:
 
-If your WSGI application lives in `vercel_app/wsgi.py` and is named `application`,
-then you can configure it as the entrypoint and adjust routes accordingly:
+```python
+from pyexceptions import handle_exceptions
 
-```json
-{
-    "builds": [{
-        "src": "vercel_app/wsgi.py",
-        "use": "@potatohd/vercel-package-installer"
-    }],
-    "routes" : [{
-        "src" : "/(.*)", "dest":"/vercel_app/wsgi.py"
-    }]
-}
+@handle_exceptions(is_lambda=True)
+def lambda_handler(event, context):
+    message = f"Hello {event['first_name']} {event['last_name']}!"
+    return { 
+        'message' : message
+    }
+```
+
+### Exclude from stacktrace
+
+There may be situations when you don't want to see part of stacktrace
+
+So if your application looks like this:
+
+```python
+from pyexceptions import handle_exceptions
+
+def devide(a, b):
+    return a / b
+
+def real_main():
+    i = 5
+    j = 0
+    c = devide(i, j)
+    print(c)
+    
+def wrapper():
+    real_main()
+
+@handle_exceptions(exclude = 'exclude_example.wrapper')
+def main():
+    wrapper()
+
+if __name__ == '__main__':
+    main()
+```
+
+and you want to exclude all stacktrace from main to wrapper
+you need to pass `file_name.function_name` as exclude argument
+
+### Other functions
+
+You can also want to use theese functions:
+
+Make function that returns HTML:
+
+```python
+@handle_exceptions(return_html = True)
+def main()
+    ...
+```
+
+Or you may want to write your own logic
+To do so you need to import the ExceptionHandler class
+
+```python
+from pyexceptions import ExceptionHandler
+```
+
+To be clear here how it looks like:
+
+```python
+class ExceptionHandler:
+    """Organize and coordinate reporting on exceptions."""
+
+    def __init__(self, lambda_event: dict = None, context: object=None, exclude: str=None):
+        """Exception reporter initializer
+        
+        Args:
+            lambda_event (dict, optional): AWS lambda event. Defaults to None.
+            context (object, optional): AWS lambda context. Defaults to None.
+            exclude (str, optional): Function to exclude Defaults to None.
+        
+        """
+        self.__reporter = ExceptionReporter(lambda_event, context, exclude)
+
+    def get_traceback_html(self):
+        """Return HTML version of debug 500 HTTP error page."""
+        return self.__reporter.get_traceback_html()
+
+    def get_traceback_lambda(self):
+        """Return AWS lambda version of debug 500 HTTP error page."""
+        return self.__reporter.get_lambda_response()
 ```
 
 ## Attribution
