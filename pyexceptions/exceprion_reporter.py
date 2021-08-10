@@ -1,24 +1,35 @@
-from jinja2 import Environment, select_autoescape, FileSystemLoader
-from pprint import pformat
+
 import re
-import sys
 import os
+import sys
 import json
 import base64
 import logging
 from io import BytesIO
+from pathlib import Path
+from functools import wraps
 from datetime import datetime
-from werkzeug.datastructures import Headers
 from werkzeug.wrappers import Response
-from .safe_exception_handler import SafeExceptionReporterFilter
-from werkzeug._internal import _wsgi_encoding_dance, _to_bytes
 from urllib.parse import urlparse, unquote
+from werkzeug.datastructures import Headers
+from .jinja_changes import pprint, add, dictsort, force_escape
+from werkzeug._internal import _wsgi_encoding_dance, _to_bytes
+from .safe_exception_handler import SafeExceptionReporterFilter
+from jinja2 import Environment, select_autoescape, FileSystemLoader
+
+
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 PATH = os.path.join(PATH, 'templates')
 
 templateEnv = Environment(loader=FileSystemLoader(PATH),
 	autoescape=select_autoescape())
+
+templateEnv.filters["pprint"] = pprint
+templateEnv.filters["add"] = add
+templateEnv.filters["dictsort"] = dictsort
+templateEnv.filters['force_escape'] = force_escape
+
 dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 
@@ -74,13 +85,6 @@ class ExceptionReporter:
 					environ[key] = value
 			self.request = environ
 
-	def _pprint(self, value):
-		"""A wrapper around pprint.pprint -- for debugging, really."""
-		try:
-			return pformat(value)
-		except Exception as e:
-			return "Error in formatting: %s: %s" % (e.__class__.__name__, e)
-
 	def _force_str(self, s, encoding='utf-8', errors='strict'):
 		"""
 		Similar to smart_str(), except that lazy instances are resolved to
@@ -115,7 +119,7 @@ class ExceptionReporter:
 			if 'vars' in frame:
 				frame_vars = []
 				for k, v in frame['vars']:
-					v = self._pprint(v)
+					v = pprint(v)
 					# Trim large blobs of data
 					if len(v) > 4096:
 						v = '%s… <trimmed %d bytes string>' % (v[0:4096],
@@ -157,12 +161,9 @@ class ExceptionReporter:
 			sys.path,
 		}
 		if self.request is not None:
-			# c['request_GET_items'] = self.request.GET.items()
-			# c['request_FILES_items'] = self.request.FILES.items()
-			# c['request_COOKIES_items'] = self.request.COOKIES.items()
-			c['request_GET_items'] = {}.items()
-			c['request_FILES_items'] = {}.items()
-			c['request_COOKIES_items'] = {}.items()
+			c['request_GET_items'] = self.request['GET'].items()
+			c['request_FILES_items'] = self.request['FILES'].items()
+			c['request_COOKIES_items'] = self.request['COOKIES'].items()
 			c['request_insecure_uri'] = self._get_raw_insecure_uri()
 
 		# Check whether exception info is available
@@ -396,7 +397,8 @@ class ExceptionHandler:
 
 
 
-def handle_exceptions(function, is_lambda: bool=False, return_html: bool=False, exceptions_floder: str=None, exclude: str=None):
+def handle_exceptions(function, is_lambda: bool=False, return_html: bool=False,
+                      exceptions_floder: str=None, exclude: str=None, only_last: bool=True):
 	"""Organize and coordinate reporting on exceptions.
 	
 	Args:
@@ -404,33 +406,40 @@ def handle_exceptions(function, is_lambda: bool=False, return_html: bool=False, 
 		return_html (bool, optional): Set true if you want the function to return html. Defaults to False.
 		exceptions_floder (str, optional): Sets the exceptions floder. Defaults to None.
 		exclude (str, optional): Determines which part of stacktrace to exclude. Defaults to None.
-	
+		only_last (bool, optional): Determines whether only last report should be saved. Defaults to True.
+  
 	Raises:
 		OSError: If file was not writed correctly this error will raise
 	"""
+	@wraps(function)
 	def wrapper(*args, **kwargs):
 		try:
 			return function(*args, **kwargs)
 		except Exception:
 			if is_lambda:
-				return ExceptionHandler(args[0], args[1]).get_traceback_lambda()
+				return ExceptionHandler(args[0], args[1], exclude=exclude).get_traceback_lambda()
 			elif return_html:
-				return ExceptionHandler().get_traceback_html()
+				return ExceptionHandler(exclude=exclude).get_traceback_html()
 			else:
-				return save_exception(ExceptionHandler().get_traceback_html(), exceptions_floder)
+				return save_exception(ExceptionHandler(exclude=exclude).get_traceback_html(), exceptions_floder)
 
 	def save_exception(html, exceptions_floder):
 		dt_string = datetime.now().strftime(r"%d-%m-%Y_%H-%M-%S")
 		file_name = f'handled_exception_{dt_string}.html'
 		if exceptions_floder is None:
 			exceptions_floder = os.path.dirname(os.path.abspath(__file__))
-			os.path.join(exceptions_floder, 'handled_exceptions')
-
+			exceptions_floder = os.path.join(exceptions_floder, 'handled_exceptions')
+		Path(exceptions_floder).mkdir(parents=True, exist_ok=True)
+		files_in_directory = os.listdir(exceptions_floder)
+		filtered_files = [file for file in files_in_directory if file.endswith(".html")]
+		for file in filtered_files:
+			path_to_file = os.path.join(exceptions_floder, file)
+			os.remove(path_to_file)
 		file_path = os.path.join(exceptions_floder, file_name)
 		try:
 			with open(file_path, "w") as f:
 				f.write(html)
-			logging.warning(f'Handled exception: {file_path}')
+			logging.warning(f'Handled exception: \nfile://{file_path}')
 		except Exception as e:
 			raise OSError('Failed to save file while handling exception: \n'+ str(e))
 		return None

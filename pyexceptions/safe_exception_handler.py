@@ -1,7 +1,7 @@
 import re
 from .multi_value_dict import MultiValueDict
 
-'The class was taken from Django repository and edited by PotatoHD404'
+'The classes was taken from Django repository and edited by PotatoHD404'
 
 class CallableSettingWrapper:
 	"""
