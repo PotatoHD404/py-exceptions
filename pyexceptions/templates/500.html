@@ -132,7 +132,7 @@
 
         div.context ol li {
             font-family: monospace;
-            white-space: pre;
+            white-space: nowrap;
             color: #777;
             cursor: pointer;
             padding-left: 2px;
@@ -260,39 +260,37 @@
             user-select: all;
         }
     </style>
-    {% if not is_email %}
-        <script>
-            function hideAll(elems) {
-                for (let e = 0; e < elems.length; e++) {
-                    elems[e].style.display = 'none';
+    <script>
+        function hideAll(elems) {
+            for (let e = 0; e < elems.length; e++) {
+                elems[e].style.display = 'none';
+            }
+        }
+
+        window.onload = function () {
+            hideAll(document.querySelectorAll('ol.pre-context'));
+            hideAll(document.querySelectorAll('ol.post-context'));
+            hideAll(document.querySelectorAll('div.pastebin'));
+        }
+
+        function toggle() {
+            for (let i = 0; i < arguments.length; i++) {
+                const e = document.getElementById(arguments[i]);
+                if (e) {
+                    e.style.display = e.style.display === 'none' ? 'block' : 'none';
                 }
             }
+            return false;
+        }
 
-            window.onload = function () {
-                hideAll(document.querySelectorAll('ol.pre-context'));
-                hideAll(document.querySelectorAll('ol.post-context'));
-                hideAll(document.querySelectorAll('div.pastebin'));
-            }
-
-            function toggle() {
-                for (let i = 0; i < arguments.length; i++) {
-                    const e = document.getElementById(arguments[i]);
-                    if (e) {
-                        e.style.display = e.style.display === 'none' ? 'block' : 'none';
-                    }
-                }
-                return false;
-            }
-
-            function switchPastebinFriendly(link) {
-                const s1 = "Switch to copy-and-paste view";
-                const s2 = "Switch back to interactive view";
-                link.textContent = link.textContent.trim() === s1 ? s2 : s1;
-                toggle('browserTraceback', 'pastebinTraceback');
-                return false;
-            }
-        </script>
-    {% endif %}
+        function switchPastebinFriendly(link) {
+            const s1 = "Switch to copy-and-paste view";
+            const s2 = "Switch back to interactive view";
+            link.textContent = link.textContent.trim() === s1 ? s2 : s1;
+            toggle('browserTraceback', 'pastebinTraceback');
+            return false;
+        }
+    </script>
 </head>
 <body>
 <div id="summary">
@@ -407,9 +405,8 @@
 {% endif %}
 {% if frames %}
     <div id="traceback">
-        <h2>Traceback{% if not is_email %}
-            <span class="commands"><a href="#" onclick="return switchPastebinFriendly(this);">
-    Switch to copy-and-paste view</a></span>{% endif %}
+        <h2>Traceback <span class="commands"><a href="#" onclick="return switchPastebinFriendly(this);">
+		Switch to copy-and-paste view</a></span>
         </h2>
         <div id="browserTraceback">
             <ul class="traceback">
@@ -447,8 +444,8 @@
                                 {% endif %}
                                 <ol start="{{ frame.lineno }}" class="context-line">
                                     <li onclick="toggle('pre{{ frame.id }}', 'post{{ frame.id }}')">
-                                        <pre>{{ frame.context_line }}</pre>{% if not is_email %}
-                                        <span>…</span>{% endif %}</li>
+                                        <pre>{{ frame.context_line }}</pre>
+                                        <span>…</span></li>
                                 </ol>
                                 {% if frame.post_context and not is_email %}
                                     <ol start='{{ frame.lineno|add(1) }}' class="post-context" id="post{{ frame.id }}">
@@ -496,64 +493,63 @@
             </ul>
         </div>
         <form action="https://dpaste.com/" name="pasteform" id="pasteform" method="post">
-            {% if not is_email %}
-                <div id="pastebinTraceback" class="pastebin">
-                    <input type="hidden" name="language" value="PythonConsole">
-                    <input type="hidden" name="title"
-                           value="{{ exception_type }}{% if request %} at {{ request.path_info }}{% endif %}">
-                    <input type="hidden" name="source" value="Django Dpaste Agent">
-                    <input type="hidden" name="poster" value="Django">
-                    <label for="traceback_area"></label><textarea name="content" id="traceback_area" cols="140"
-                                                                  rows="25">
+
+            <div id="pastebinTraceback" class="pastebin">
+                <input type="hidden" name="language" value="PythonConsole">
+                <input type="hidden" name="title"
+                       value="{{ exception_type }}{% if request %} at {{ request.path_info }}{% endif %}">
+                <input type="hidden" name="source" value="Django Dpaste Agent">
+                <input type="hidden" name="poster" value="Django">
+                <label for="traceback_area"></label><textarea name="content" id="traceback_area" cols="140" rows="25">
 Environment:
 
-                    {% if request %}
-                        Request Method: {{ request.META.REQUEST_METHOD }}
-                        Request URL: {{ request_insecure_uri }}
-                    {% endif %}
-                    Django Version: {{ django_version_info }}
+                {% if request %}
+                    Request Method: {{ request.META.REQUEST_METHOD }}
+                    Request URL: {{ request_insecure_uri }}
+                {% endif %}
+                Django Version: {{ django_version_info }}
 Python Version: {{ sys_version_info }}
 
-                    {% if template_does_not_exist %}Template loader postmortem
-                        {% if postmortem %}Django tried loading these templates, in this order:
-                            {% for entry in postmortem %}
-                                Using engine {{ entry.backend.name }}:
-                                {% if entry.tried %}{% for attempt in entry.tried %}    *
-                                    {{ attempt.0.loader_name }}: {{ attempt.0.name }} ({{ attempt.1 }})
-                                {% endfor %}{% else %}    This engine did not provide a list of tried templates.
-                                {% endif %}{% endfor %}
-                        {% else %}No templates were found because your 'TEMPLATES' setting is not configured.
-                        {% endif %}{% endif %}{% if template_info %}
-                    Template error:
-                    In template {{ template_info.name }}, error at line {{ template_info.line }}
-                    {{ template_info.message }}
-                    {% for source_line in template_info.source_lines %}{% if source_line.0 == template_info.line %}
-                        {{ source_line.0 }} : {{ template_info.before }} {{ template_info.during }}
-                        {{ template_info.after }}{% else %}   {{ source_line.0 }} : {{ source_line.1 }}{% endif %}
-                    {% endfor %}{% endif %}
+                {% if template_does_not_exist %}Template loader postmortem
+                    {% if postmortem %}Django tried loading these templates, in this order:
+                        {% for entry in postmortem %}
+                            Using engine {{ entry.backend.name }}:
+                            {% if entry.tried %}{% for attempt in entry.tried %} * {{ attempt.0.loader_name }}:
+                                {{ attempt.0.name }} ({{ attempt.1 }})
+                            {% endfor %}{% else %} This engine did not provide a list of tried templates.
+                            {% endif %}{% endfor %}
+                    {% else %}No templates were found because your 'TEMPLATES' setting is not configured.
+                    {% endif %}{% endif %}{% if template_info %}
+                Template error:
+                In template {{ template_info.name }}, error at line {{ template_info.line }}
+                {{ template_info.message }}
+                {% for source_line in template_info.source_lines %}{% if source_line.0 == template_info.line %}
+                    {{ source_line.0 }} : {{ template_info.before }} {{ template_info.during }}
+                    {{ template_info.after }}{% else %} {{ source_line.0 }} : {{ source_line.1 }}{% endif %}
+                {% endfor %}{% endif %}
 
-                    Traceback (most recent call last):{% for frame in frames %}
-                    {% if frame.exc_cause %}{% if frame.exc_cause_explicit %}
-                        The above exception ({{ frame.exc_cause|force_escape }}) was the direct cause of the
-                        following exception:
-                    {% else %}
-                        During handling of the above exception ({{ frame.exc_cause|force_escape }}), another
-                        exception occurred:
-                    {% endif %}{% endif %}  {% if frame.tb %}File "{{ frame.filename }}"
-                        {% if frame.context_line %}, line {{ frame.lineno }}{% endif %}, in {{ frame.function }}
-                        {% if frame.context_line %}    {% filter trim %}{{ frame.context_line }}
-                        {% endfilter %}{% endif %}{% else %}{% if forloop.first %}None{% else %}Traceback: None
-                    {% endif %}{% endif %}{% endfor %}
+                Traceback (most recent call last):{% for frame in frames %}
+                {% if frame.exc_cause %}{% if frame.exc_cause_explicit %}
+                    The above exception ({{ frame.exc_cause|force_escape }}) was the direct cause of the following
+                    exception:
+                {% else %}
+                    During handling of the above exception ({{ frame.exc_cause|force_escape }}), another exception
+                    occurred:
+                {% endif %}{% endif %} {% if frame.tb %}File "{{ frame.filename }}"{% if frame.context_line %}, line
+                    {{ frame.lineno }}{% endif %}, in {{ frame.function }}
+                    {% if frame.context_line %} {% filter trim %}{{ frame.context_line }}
+                    {% endfilter %}{% endif %}{% else %}{% if forloop.first %}None{% else %}Traceback: None{% endif %}
+                {% endif %}{% endfor %}
 
-                    Exception Type: {{ exception_type }}{% if request %} at {{ request.path_info }}{% endif %}
+                Exception Type: {{ exception_type }}{% if request %} at {{ request.path_info }}{% endif %}
 Exception Value: {{ exception_value|force_escape }}
 </textarea>
-                    <br><br>
-                    <input type="submit" value="Share this traceback on a public website">
-                </div>
-                </form>
-                </div>
-            {% endif %}
+                <br><br>
+                <input type="submit" value="Share this traceback on a public website">
+            </div>
+        </form>
+    </div>
+
 {% endif %}
 
 <div id="requestinfo">
@@ -682,7 +678,7 @@ Exception Value: {{ exception_value|force_escape }}
 
 <div id="explanation">
     <p>
-        You’re seeing this error because you have used py-exceptions in your
+        You’re seeing this page because you have used py-exceptions in your
         code.
     </p>
 </div>
