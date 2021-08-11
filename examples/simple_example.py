@@ -5,7 +5,7 @@ def divide(a, b):
     return a / b
 
 
-@handle_exceptions
+@handle_exceptions()
 def main():
     i = 5
     j = 0

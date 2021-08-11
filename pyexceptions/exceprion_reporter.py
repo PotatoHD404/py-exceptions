@@ -4,9 +4,8 @@ import sys
 import json
 import base64
 import logging
-from io import BytesIO
+
 from pathlib import Path
-from functools import wraps
 from datetime import datetime
 from werkzeug.wrappers import Response
 from urllib.parse import urlparse, unquote
@@ -16,10 +15,7 @@ from werkzeug._internal import _wsgi_encoding_dance, _to_bytes  # noqa
 from .safe_exception_handler import SafeExceptionReporterFilter
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 
-PATH = os.path.dirname(os.path.abspath(__file__))
-PATH = os.path.join(PATH, 'templates')
-print(PATH)
-templateEnv = Environment(loader=FileSystemLoader(PATH),
+templateEnv = Environment(loader=FileSystemLoader(Path(__file__).parent / 'templates'),
                           autoescape=select_autoescape())
 
 templateEnv.filters["pprint"] = pprint
@@ -61,16 +57,16 @@ class ExceptionReporter:
                 'QUERY_STRING': unquote(parsed_url.query),
                 'REMOTE_ADDR': event.get('x-real-ip', ''),
                 'REQUEST_METHOD': event.get('method', 'GET'),
-                'SCRIPT_NAME': '',
                 'SERVER_NAME': headers.get('host', 'lambda'),
                 'SERVER_PORT': headers.get('x-forwarded-port', '443'),
                 'SERVER_PROTOCOL': 'HTTP/2',
-                'wsgi.input': BytesIO(body).read().decode('utf-8'),
+                'BODY': body.decode('utf-8'),
                 'wsgi.multiprocess': False,
                 'wsgi.multithread': False,
                 'wsgi.run_once': False,
                 'wsgi.url_scheme': headers.get('x-forwarded-proto', 'https'),
                 'wsgi.version': (1, 0),
+                'HEADERS': event.get('headers', None),
             }
 
             for key, value in environ.items():
@@ -181,7 +177,7 @@ class ExceptionReporter:
         return t.render(**c)
 
     def get_lambda_response(self):
-        response = Response(self.get_traceback_html(), mimetype='text/html')
+        response = Response(self.get_traceback_html(), mimetype='text/html', status='500')
         headers = {}
         for key, value in response.headers:
             if key in headers:
@@ -395,12 +391,11 @@ class ExceptionHandler:
         return self.__reporter.get_lambda_response()
 
 
-def handle_exceptions(function=None, is_lambda: bool = False, return_html: bool = False,
+def handle_exceptions(is_lambda: bool = False, return_html: bool = False,
                       exceptions_folder: str = None, exclude: str = None, only_last: bool = True):
     """Organize and coordinate reporting on exceptions.
 
     Args:
-        function
         is_lambda (bool, optional): Set true if you want to handle lambda function. Defaults to False.
         return_html (bool, optional): Set true if you want the function to return html. Defaults to False.
         exceptions_folder (str, optional): Sets the exceptions folder. Defaults to None.
@@ -411,38 +406,39 @@ def handle_exceptions(function=None, is_lambda: bool = False, return_html: bool 
         OSError: If file was not written correctly this error will raise
     """
 
-    @wraps(function)
-    def wrapper(*args, **kwargs):
-        try:
-            return function(*args, **kwargs)
-        except Exception:  # noqa
-            if is_lambda:
-                return ExceptionHandler(args[0], args[1], exclude=exclude).get_traceback_lambda()
-            elif return_html:
-                return ExceptionHandler(exclude=exclude).get_traceback_html()
-            else:
-                return save_exception(ExceptionHandler(exclude=exclude).get_traceback_html(), exceptions_folder)
+    def decorator(function):
+        def wrapper(*args, **kwargs):
+            try:
+                return function(*args, **kwargs)
+            except Exception:  # noqa
+                if is_lambda:
+                    return ExceptionHandler(exclude=exclude).get_traceback_lambda()
+                elif return_html:
+                    return ExceptionHandler(exclude=exclude).get_traceback_html()
+                else:
+                    time_string = datetime.now().strftime(r"%d-%m-%Y_%H-%M-%S")
+                    file_name = f'handled_exception_{time_string}.html'
+                    folder = exceptions_folder
+                    if folder is None:
+                        folder = os.path.dirname(os.path.abspath(__file__))  # noqa
+                        folder = os.path.join(folder, 'handled_exceptions')  # noqa
+                    Path(folder).mkdir(parents=True, exist_ok=True)
+                    if only_last:
+                        files_in_directory = os.listdir(folder)
+                        filtered_files = [file for file in files_in_directory if file.endswith(".html")]
+                        for file in filtered_files:
+                            path_to_file = os.path.join(folder, file)
+                            os.remove(path_to_file)
+                    file_path = os.path.join(folder, file_name)
+                    html = ExceptionHandler(exclude=exclude).get_traceback_html()
+                    try:
+                        with open(file_path, "w") as f:
+                            f.write(html)
+                        logging.warning(f'Handled exception: \nfile://{file_path}')
+                    except Exception as e:
+                        raise OSError('Failed to save file while handling exception: \n' + str(e))
+                    return None
 
-    def save_exception(html, exceptions_folder):  # noqa
-        time_string = datetime.now().strftime(r"%d-%m-%Y_%H-%M-%S")
-        file_name = f'handled_exception_{time_string}.html'
-        if exceptions_folder is None:
-            exceptions_folder = os.path.dirname(os.path.abspath(__file__))  # noqa
-            exceptions_folder = os.path.join(exceptions_folder, 'handled_exceptions')  # noqa
-        Path(exceptions_folder).mkdir(parents=True, exist_ok=True)
-        if only_last:
-            files_in_directory = os.listdir(exceptions_folder)
-            filtered_files = [file for file in files_in_directory if file.endswith(".html")]
-            for file in filtered_files:
-                path_to_file = os.path.join(exceptions_folder, file)
-                os.remove(path_to_file)
-        file_path = os.path.join(exceptions_folder, file_name)
-        try:
-            with open(file_path, "w") as f:
-                f.write(html)
-            logging.warning(f'Handled exception: \nfile://{file_path}')
-        except Exception as e:
-            raise OSError('Failed to save file while handling exception: \n' + str(e))
-        return None
+        return wrapper
 
-    return wrapper
+    return decorator
