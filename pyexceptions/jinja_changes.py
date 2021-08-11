@@ -4,49 +4,52 @@ from operator import itemgetter
 import html
 from functools import wraps
 
+
 class VariableDoesNotExist(Exception):
 
-	def __init__(self, msg, params=()):
-		self.msg = msg
-		self.params = params
+    def __init__(self, msg, params=()):
+        self.msg = msg
+        self.params = params
 
-	def __str__(self):
-		return self.msg % self.params
+    def __str__(self):
+        return self.msg % self.params
 
 
 def pprint(value):
-	"""A wrapper around pprint.pprint -- for debugging, really."""
-	try:
-		return pformat(value)
-	except Exception as e:
-		return "Error in formatting: %s: %s" % (e.__class__.__name__, e)
+    """A wrapper around pprint.pprint -- for debugging, really."""
+    try:
+        return pformat(value)
+    except Exception as e:
+        return "Error in formatting: %s: %s" % (e.__class__.__name__, e)
+
 
 def add(value, arg):
-	"""Add the arg to the value."""
-	try:
-		return int(value) + int(arg)
-	except (ValueError, TypeError):
-		try:
-			return value + arg
-		except Exception:
-			return ''
+    """Add the arg to the value."""
+    try:
+        return int(value) + int(arg)
+    except (ValueError, TypeError):
+        try:
+            return value + arg
+        except Exception: # noqa
+            return ''
+
 
 def dictsort(value, arg):
-	"""
-	Given a list of dicts, return that list sorted by the property given in
-	the argument.
-	"""
-	try:
-		return sorted(value, key=itemgetter(arg))
-	except (TypeError, VariableDoesNotExist):
-		return ''
-
+    """
+    Given a list of dicts, return that list sorted by the property given in
+    the argument.
+    """
+    try:
+        return sorted(value, key=itemgetter(arg))
+    except (TypeError, VariableDoesNotExist):
+        return ''
 
 
 def _safety_decorator(safety_marker, func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         return safety_marker(func(*args, **kwargs))
+
     return wrapped
 
 
@@ -58,11 +61,13 @@ class SafeData:
         """
         return self
 
+
 class SafeString(str, SafeData):
     """
     A str subclass that has been specifically marked as "safe" for HTML output
     purposes.
     """
+
     def __add__(self, rhs):
         """
         Concatenating a safe string with another safe bytestring or
@@ -90,6 +95,7 @@ def mark_safe(s):
         return _safety_decorator(mark_safe, s)
     return SafeString(s)
 
+
 def escape(text):
     """
     Return the given text with ampersands, quotes and angle brackets encoded
@@ -100,6 +106,7 @@ def escape(text):
     """
     return mark_safe(html.escape(str(text)))
 
+
 def force_escape(value):
     """
     Escape a string's HTML. Return a new string containing the escaped
@@ -107,4 +114,3 @@ def force_escape(value):
     possible escaping).
     """
     return escape(value)
-
