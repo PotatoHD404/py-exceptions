@@ -64,7 +64,7 @@ class SafeExceptionReporterFilter:
         if request is None:
             return {}
 
-        return {k: self.cleanse_setting(k, v) for k, v in request.items()}
+        return {k: self.cleanse_setting(k, v) for k, v in request.items() if k not in {'HEADERS', 'wsgi.input'}}
 
     def get_cleansed_multivaluedict(self, request, multivaluedict):
         """

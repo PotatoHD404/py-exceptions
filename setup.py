@@ -9,7 +9,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name='py-exceptions',
-    version='1.0.0',
+    version='1.0.4',
     url='https://github.com/PotatoHD404/py-exceptions',
     description='A simple python exception reporter',
     author='PotatoHD404',
