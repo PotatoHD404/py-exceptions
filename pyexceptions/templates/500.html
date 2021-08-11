@@ -184,6 +184,10 @@
             color: #666;
         }
 
+        #explanation {
+            background: #eee;
+        }
+
         #template, #template-not-exist {
             background: #f6f6f6;
         }
@@ -405,7 +409,7 @@
     <div id="traceback">
         <h2>Traceback{% if not is_email %}
             <span class="commands"><a href="#" onclick="return switchPastebinFriendly(this);">
-		Switch to copy-and-paste view</a></span>{% endif %}
+    Switch to copy-and-paste view</a></span>{% endif %}
         </h2>
         <div id="browserTraceback">
             <ul class="traceback">
@@ -514,9 +518,9 @@ Python Version: {{ sys_version_info }}
                         {% if postmortem %}Django tried loading these templates, in this order:
                             {% for entry in postmortem %}
                                 Using engine {{ entry.backend.name }}:
-                                {% if entry.tried %}{% for attempt in entry.tried %} * {{ attempt.0.loader_name }}:
-                                    {{ attempt.0.name }} ({{ attempt.1 }})
-                                {% endfor %}{% else %} This engine did not provide a list of tried templates.
+                                {% if entry.tried %}{% for attempt in entry.tried %}    *
+                                    {{ attempt.0.loader_name }}: {{ attempt.0.name }} ({{ attempt.1 }})
+                                {% endfor %}{% else %}    This engine did not provide a list of tried templates.
                                 {% endif %}{% endfor %}
                         {% else %}No templates were found because your 'TEMPLATES' setting is not configured.
                         {% endif %}{% endif %}{% if template_info %}
@@ -525,7 +529,7 @@ Python Version: {{ sys_version_info }}
                     {{ template_info.message }}
                     {% for source_line in template_info.source_lines %}{% if source_line.0 == template_info.line %}
                         {{ source_line.0 }} : {{ template_info.before }} {{ template_info.during }}
-                        {{ template_info.after }}{% else %} {{ source_line.0 }} : {{ source_line.1 }}{% endif %}
+                        {{ template_info.after }}{% else %}   {{ source_line.0 }} : {{ source_line.1 }}{% endif %}
                     {% endfor %}{% endif %}
 
                     Traceback (most recent call last):{% for frame in frames %}
@@ -535,9 +539,9 @@ Python Version: {{ sys_version_info }}
                     {% else %}
                         During handling of the above exception ({{ frame.exc_cause|force_escape }}), another
                         exception occurred:
-                    {% endif %}{% endif %} {% if frame.tb %}File "{{ frame.filename }}"{% if frame.context_line %},
-                        line {{ frame.lineno }}{% endif %}, in {{ frame.function }}
-                        {% if frame.context_line %} {% filter trim %}{{ frame.context_line }}
+                    {% endif %}{% endif %}  {% if frame.tb %}File "{{ frame.filename }}"
+                        {% if frame.context_line %}, line {{ frame.lineno }}{% endif %}, in {{ frame.function }}
+                        {% if frame.context_line %}    {% filter trim %}{{ frame.context_line }}
                         {% endfilter %}{% endif %}{% else %}{% if forloop.first %}None{% else %}Traceback: None
                     {% endif %}{% endif %}{% endfor %}
 
@@ -675,5 +679,13 @@ Exception Value: {{ exception_value|force_escape }}
         <p>Request data not supplied</p>
     {% endif %}
 </div>
+
+<div id="explanation">
+    <p>
+        You’re seeing this error because you have used py-exceptions in your
+        code.
+    </p>
+</div>
+
 </body>
 </html>
