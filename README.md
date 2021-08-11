@@ -11,7 +11,7 @@ The library nicely covers all your secret variables and request data in its repo
 
 ### Screenshots
 
-![Beautiful image](https://github.com/PotatoHD404/py-exceptions/tree/release/1.0.0/images/demo.png?raw=true)
+![Beautiful image](/images/demo.png)
 
 ## Quickstart
 
