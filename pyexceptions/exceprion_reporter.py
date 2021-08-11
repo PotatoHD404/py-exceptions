@@ -417,7 +417,7 @@ def handle_exceptions(function=None, is_lambda: bool = False, return_html: bool 
             return function(*args, **kwargs)
         except Exception:  # noqa
             if is_lambda:
-                return ExceptionHandler(exclude=exclude).get_traceback_lambda()
+                return ExceptionHandler(args[0], args[1], exclude=exclude).get_traceback_lambda()
             elif return_html:
                 return ExceptionHandler(exclude=exclude).get_traceback_html()
             else:
