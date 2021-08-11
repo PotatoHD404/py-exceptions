@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-	name='pyexceptions',
+	name='py-exceptions',
 	version='1.0.0',
 	url='https://github.com/PotatoHD404/py-exceptions',
 	description='A simple python exception reporter',
