@@ -122,3 +122,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+.DS_Store
+
+.idea/
+
+pyexceptions/handled_exceptions/
