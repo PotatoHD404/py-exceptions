@@ -124,3 +124,7 @@ dmypy.json
 .pyre/
 
 .DS_Store
+
+.idea/
+
+pyexceptions/handled_exceptions/

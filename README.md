@@ -1,20 +1,17 @@
-# py-exceptions [![PyPI version](https://badge.fury.io/py/py-exception.svg)](https://badge.fury.io/py/py-exception)
+# py-exceptions [![PyPI version](https://badge.fury.io/py/py-exceptions.svg)](https://badge.fury.io/py/py-exceptions)
 
 ## *A simple python exception reporter*
 
 ### Description
 
-This library provides great stacktrace and
-web request information like Django does
-It can save it to html, return html to your code or
-even response in AWS lambda format
+This library provides great stacktrace and web request information like Django does It can save it to html, return html
+to your code or even response in AWS lambda format
 
-The library nicely covers all your secret variables and
-request data in it's report
+The library nicely covers all your secret variables and request data in its report
 
 ### Screenshots
 
-![Beautiful image](https://github.com/PotatoHD404/py-exceptions/blob/dev/image.jpg?raw=true)
+![Beautiful image](/images/demo.png)
 
 ## Quickstart
 
@@ -31,15 +28,18 @@ Add decorator to function
 ```python
 from pyexceptions import handle_exceptions
 
-def devide(a, b):
+
+def divide(a, b):
     return a / b
+
 
 @handle_exceptions
 def main():
     i = 5
     j = 0
-    c = devide(i, j)
+    c = divide(i, j)
     print(c)
+
 
 if __name__ == '__main__':
     main()
@@ -50,15 +50,18 @@ You can also override folder for exception reports
 ```python
 from pyexceptions import handle_exceptions
 
-def devide(a, b):
+
+def divide(a, b):
     return a / b
 
-@handle_exceptions(exceptions_floder='./SomeFolderPath')
+
+@handle_exceptions(exceptions_folder=f'./SomeFolderPath')
 def main():
     i = 5
     j = 0
-    c = devide(i, j)
+    c = divide(i, j)
     print(c)
+
 
 if __name__ == '__main__':
     main()
@@ -66,22 +69,22 @@ if __name__ == '__main__':
 
 ### AWS Lambda example
 
-It is hard to determine what's went wrong when you are using
-AWS lambda. So you can use the example not only to get full stacktrace
-but to get lambda event and context information:
+It is hard to determine what's went wrong when you are using AWS lambda. So you can use the example not only to get full
+stacktrace but to get lambda event and context information:
 
 ```python
 from pyexceptions import handle_exceptions
 
+
 @handle_exceptions(is_lambda=True)
-def lambda_handler(event, context):
+def lambda_handler(event, context):  # noqa
     message = f"Hello {event['first_name']} {event['last_name']}!"
-    return { 
-        'message' : message
+    return {
+        'message': message
     }
 ```
 
-### Exclude from stacktrace
+<!-- ### Exclude from stacktrace
 
 There may be situations when you don't want to see part of stacktrace
 
@@ -90,13 +93,13 @@ So if your application looks like this:
 ```python
 from pyexceptions import handle_exceptions
 
-def devide(a, b):
+def divide(a, b):
     return a / b
 
 def real_main():
     i = 5
     j = 0
-    c = devide(i, j)
+    c = divide(i, j)
     print(c)
     
 def wrapper():
@@ -111,34 +114,38 @@ if __name__ == '__main__':
 ```
 
 and you want to exclude all stacktrace from main to wrapper
-you need to pass `file_name.function_name` as exclude argument
+you need to pass `file_name.function_name` as exclude argument -->
 
 ### Other functions
 
-You can also want to use theese functions:
+You can also want to use these functions:
 
 Make function that returns HTML:
 
 ```python
-@handle_exceptions(return_html = True)
-def main()
+from pyexceptions import handle_exceptions
+
+
+@handle_exceptions(return_html=True)
+def main():
     ...
 ```
 
-Or you may want to write your own logic
-To do so you need to import the ExceptionHandler class
+Or you may want to write your own logic To do so you need to import the ExceptionHandler class
 
 ```python
-from pyexceptions import ExceptionHandler
+from pyexceptions import ExceptionHandler  # noqa
 ```
 
 To be clear here how it looks like:
 
 ```python
+
+
 class ExceptionHandler:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context: object=None, exclude: str=None):
+    def __init__(self, lambda_event: dict = None, context: object = None, exclude: str = None):
         """Exception reporter initializer
         
         Args:
@@ -147,7 +154,7 @@ class ExceptionHandler:
             exclude (str, optional): Function to exclude Defaults to None.
         
         """
-        self.__reporter = ExceptionReporter(lambda_event, context, exclude)
+        self.__reporter = ExceptionReporter(lambda_event, context, exclude)  # noqa
 
     def get_traceback_html(self):
         """Return HTML version of debug 500 HTTP error page."""

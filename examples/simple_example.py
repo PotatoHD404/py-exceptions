@@ -1,14 +1,17 @@
 from pyexceptions import handle_exceptions
 
-def devide(a, b):
+
+def divide(a, b):
     return a / b
+
 
 @handle_exceptions
 def main():
     i = 5
     j = 0
-    c = devide(i, j)
+    c = divide(i, j)
     print(c)
+
 
 if __name__ == '__main__':
     main()
