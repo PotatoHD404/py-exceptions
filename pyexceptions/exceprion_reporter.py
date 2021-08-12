@@ -3,12 +3,13 @@ import os
 import sys
 import json
 import base64
+import inspect
 import logging
-
 from pathlib import Path
 from datetime import datetime
+from http.cookies import SimpleCookie
 from werkzeug.wrappers import Response
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, parse_qs
 from werkzeug.datastructures import Headers
 from .jinja_changes import pprint, add, dictsort, force_escape
 from werkzeug._internal import _wsgi_encoding_dance, _to_bytes  # noqa
@@ -50,11 +51,19 @@ class ExceptionReporter:
             else:
                 body = _to_bytes(body, charset='utf-8')
 
+            cookies = event.get('cookie', {})
+            if cookies != {}:
+                cookie = SimpleCookie()
+                cookie.load(cookies)
+                cookies = {}
+                for key, morsel in cookie.items():
+                    cookies[key] = morsel.value
+
             environ = {
                 'CONTENT_LENGTH': str(len(body)),
                 'CONTENT_TYPE': headers.get('content-type', ''),
                 'PATH_INFO': parsed_url.path,
-                'QUERY_STRING': unquote(parsed_url.query),
+                'GET': dict(parse_qs(parsed_url.query)),
                 'REMOTE_ADDR': event.get('x-real-ip', ''),
                 'REQUEST_METHOD': event.get('method', 'GET'),
                 'SERVER_NAME': headers.get('host', 'lambda'),
@@ -67,6 +76,7 @@ class ExceptionReporter:
                 'wsgi.url_scheme': headers.get('x-forwarded-proto', 'https'),
                 'wsgi.version': (1, 0),
                 'HEADERS': event.get('headers', None),
+                'COOKIES': cookies,
             }
 
             for key, value in environ.items():
@@ -75,7 +85,7 @@ class ExceptionReporter:
 
             for key, value in headers.items():
                 key = 'HTTP_' + key.upper().replace('-', '_')
-                if key not in ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH'):
+                if key not in ('HTTP_CONTENT_TYPE', 'HTTP_CONTENT_LENGTH', 'HTTP_COOKIE'):
                     environ[key] = value
             self.request = environ
 
@@ -156,7 +166,7 @@ class ExceptionReporter:
         }
         if self.request is not None:
             c['request_GET_items'] = self.request['GET'].items()
-            c['request_FILES_items'] = self.request['FILES'].items()
+            # c['request_FILES_items'] = self.request['FILES'].items()
             c['request_COOKIES_items'] = self.request['COOKIES'].items()
             c['request_insecure_uri'] = self._get_raw_insecure_uri()
 
@@ -177,7 +187,7 @@ class ExceptionReporter:
         return t.render(**c)
 
     def get_lambda_response(self):
-        response = Response(self.get_traceback_html(), mimetype='text/html', status='500')
+        response = Response(self.get_traceback_html(), mimetype='text/html')
         headers = {}
         for key, value in response.headers:
             if key in headers:
@@ -301,7 +311,7 @@ class ExceptionReporter:
             except IndexError:
                 break
             tb = exc_value.__traceback__
-        return frames
+        return frames[1:]
 
     def get_exception_traceback_frames(self, exc_value, tb):
         exc_cause = self._get_explicit_or_implicit_cause(exc_value)
@@ -391,14 +401,14 @@ class ExceptionHandler:
         return self.__reporter.get_lambda_response()
 
 
-def handle_exceptions(is_lambda: bool = False, return_html: bool = False,
+def handle_exceptions(is_lambda: bool = False, save: bool = True,
                       exceptions_folder: str = None, exclude: str = None, only_last: bool = True):
     """Organize and coordinate reporting on exceptions.
 
     Args:
         is_lambda (bool, optional): Set true if you want to handle lambda function. Defaults to False.
-        return_html (bool, optional): Set true if you want the function to return html. Defaults to False.
-        exceptions_folder (str, optional): Sets the exceptions folder. Defaults to None.
+        save (bool, optional): Set true if you want the function to save html. Defaults to True.
+        exceptions_folder (str, optional): Sets the exceptions folder. Defaults to working_directory/handled_exceptions.
         exclude (str, optional): Determines which part of stacktrace to exclude. Defaults to None.
         only_last (bool, optional): Determines whether only last report should be saved. Defaults to True.
 
@@ -412,16 +422,15 @@ def handle_exceptions(is_lambda: bool = False, return_html: bool = False,
                 return function(*args, **kwargs)
             except Exception:  # noqa
                 if is_lambda:
-                    return ExceptionHandler(exclude=exclude).get_traceback_lambda()
-                elif return_html:
-                    return ExceptionHandler(exclude=exclude).get_traceback_html()
-                else:
+                    return ExceptionHandler(*args[:2], exclude=exclude).get_traceback_lambda()
+                html = ExceptionHandler(exclude=exclude).get_traceback_html()
+                if save:
                     time_string = datetime.now().strftime(r"%d-%m-%Y_%H-%M-%S")
                     file_name = f'handled_exception_{time_string}.html'
                     folder = exceptions_folder
                     if folder is None:
-                        folder = os.path.dirname(os.path.abspath(__file__))  # noqa
-                        folder = os.path.join(folder, 'handled_exceptions')  # noqa
+                        folder = os.path.dirname(os.path.abspath(inspect.getfile(function)))
+                        folder = os.path.join(folder, 'handled_exceptions')
                     Path(folder).mkdir(parents=True, exist_ok=True)
                     if only_last:
                         files_in_directory = os.listdir(folder)
@@ -430,14 +439,13 @@ def handle_exceptions(is_lambda: bool = False, return_html: bool = False,
                             path_to_file = os.path.join(folder, file)
                             os.remove(path_to_file)
                     file_path = os.path.join(folder, file_name)
-                    html = ExceptionHandler(exclude=exclude).get_traceback_html()
                     try:
                         with open(file_path, "w") as f:
                             f.write(html)
                         logging.warning(f'Handled exception: \nfile://{file_path}')
                     except Exception as e:
                         raise OSError('Failed to save file while handling exception: \n' + str(e))
-                    return None
+                return html
 
         return wrapper
 

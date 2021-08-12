@@ -128,3 +128,5 @@ dmypy.json
 .idea/
 
 pyexceptions/handled_exceptions/
+
+examples/handled_exceptions/

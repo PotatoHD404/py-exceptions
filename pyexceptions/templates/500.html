@@ -295,14 +295,14 @@
 <body>
 <div id="summary">
     <h1>{% if exception_type %}{{ exception_type }}{% else %}Report{% endif %}
-        {% if request %} at {{ request.path_info }}{% endif %}</h1>
+        {% if request %} at {{ request['PATH_INFO'] }}{% endif %}</h1>
     <pre class="exception_value">{% if exception_value %}{{ exception_value|force_escape }}{% else %}No exception
         message supplied{% endif %}</pre>
     <table class="meta">
         {% if request %}
             <tr>
                 <th>Request Method:</th>
-                <td>{{ request.META.REQUEST_METHOD }}</td>
+                <td>{{ request['REQUEST_METHOD'] }}</td>
             </tr>
             <tr>
                 <th>Request URL:</th>
@@ -497,14 +497,14 @@
             <div id="pastebinTraceback" class="pastebin">
                 <input type="hidden" name="language" value="PythonConsole">
                 <input type="hidden" name="title"
-                       value="{{ exception_type }}{% if request %} at {{ request.path_info }}{% endif %}">
+                       value="{{ exception_type }}{% if request %} at {{ request['PATH_INFO'] }}{% endif %}">
                 <input type="hidden" name="source" value="Django Dpaste Agent">
                 <input type="hidden" name="poster" value="Django">
                 <label for="traceback_area"></label><textarea name="content" id="traceback_area" cols="140" rows="25">
 Environment:
 
                 {% if request %}
-                    Request Method: {{ request.META.REQUEST_METHOD }}
+                    Request Method: {{ request['REQUEST_METHOD'] }}
                     Request URL: {{ request_insecure_uri }}
                 {% endif %}
                 Django Version: {{ django_version_info }}
@@ -541,7 +541,7 @@ Python Version: {{ sys_version_info }}
                     {% endfilter %}{% endif %}{% else %}{% if forloop.first %}None{% else %}Traceback: None{% endif %}
                 {% endif %}{% endfor %}
 
-                Exception Type: {{ exception_type }}{% if request %} at {{ request.path_info }}{% endif %}
+                Exception Type: {{ exception_type }}{% if request %} at {{ request['PATH_INFO'] }}{% endif %}
 Exception Value: {{ exception_value|force_escape }}
 </textarea>
                 <br><br>
@@ -557,7 +557,7 @@ Exception Value: {{ exception_value|force_escape }}
 
     {% if request %}
         <h3 id="get-info">GET</h3>
-        {% if request.GET %}
+        {% if request['GET'] %}
             <table class="req">
                 <thead>
                 <tr>
@@ -629,7 +629,7 @@ Exception Value: {{ exception_value|force_escape }}
 
 
         <h3 id="cookie-info">COOKIES</h3>
-        {% if request.COOKIES %}
+        {% if request['COOKIES'] %}
             <table class="req">
                 <thead>
                 <tr>
@@ -661,7 +661,7 @@ Exception Value: {{ exception_value|force_escape }}
             </tr>
             </thead>
             <tbody>
-            {% for var in request_meta.items|dictsort(0) %}
+            {% for var in request_meta.items()|dictsort(0) %}
                 <tr>
                     <td>{{ var.0 }}</td>
                     <td class="code">
@@ -678,7 +678,7 @@ Exception Value: {{ exception_value|force_escape }}
 
 <div id="explanation">
     <p>
-        You’re seeing this page because you have used py-exceptions in your
+        You're seeing this page because you have used py-exceptions in your
         code.
     </p>
 </div>
