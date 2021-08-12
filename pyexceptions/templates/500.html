@@ -652,6 +652,30 @@ Exception Value: {{ exception_value|force_escape }}
             <p>No cookie data</p>
         {% endif %}
 
+        <h3 id="cookie-info">CONTEXT</h3>
+        {% if context %}
+            <table class="req">
+                <thead>
+                <tr>
+                    <th>Variable</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for k, v in context.__dict__.items() %}
+                    <tr>
+                        <td>{{ k }}</td>
+                        <td class="code">
+                            <pre>{{ v|pprint }}</pre>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No context data</p>
+        {% endif %}
+
         <h3 id="meta-info">META</h3>
         <table class="req">
             <thead>

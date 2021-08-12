@@ -151,6 +151,8 @@ class ExceptionReporter:
                 frames,
             'request':
                 self.request,
+            'context':
+                self.context,
             'request_meta':
                 self.filter.get_safe_request_meta(self.request),
             'filtered_POST_items':
