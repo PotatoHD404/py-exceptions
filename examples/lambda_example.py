@@ -7,7 +7,3 @@ def lambda_handler(event, context):
     return {
         'message': message
     }
-
-
-if __name__ == '__main__':
-    print(lambda_handler())

@@ -64,7 +64,8 @@ class SafeExceptionReporterFilter:
         if request is None:
             return {}
 
-        return {k: self.cleanse_setting(k, v) for k, v in request.items() if k not in {'HEADERS', 'wsgi.input'}}
+        return {k: self.cleanse_setting(k, v) for k, v in request.items() if
+                k not in {'HEADERS', 'wsgi.input', 'GET', 'QUERY_STRING', 'COOKIES'}}
 
     def get_cleansed_multivaluedict(self, request, multivaluedict):
         """
@@ -88,23 +89,11 @@ class SafeExceptionReporterFilter:
         """
         if request is None:
             return {}
-        sensitive_post_parameters = getattr(request,
-                                            'sensitive_post_parameters', [])
-        if not sensitive_post_parameters:
-            # return request.POST
-            return {}
-
-        cleansed = request.POST.copy()
-        if sensitive_post_parameters == '__ALL__':
-            # Cleanse all parameters.
-            for k in cleansed:
-                cleansed[k] = self.cleansed_substitute
-        else:
-            # Cleanse only the specified parameters.
-            for param in sensitive_post_parameters:
-                if param in cleansed:
-                    cleansed[param] = self.cleansed_substitute
-        return cleansed
+        try:
+            body = dict(request['BODY'])
+            return {k: self.cleanse_setting(k, v) for k, v in body.items()}
+        except Exception:
+            return {'BODY': request['BODY']}
 
     def cleanse_special_types(self, request, value):
         try:
