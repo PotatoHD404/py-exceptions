@@ -11,7 +11,9 @@ The library nicely covers all your secret variables and request data in its repo
 
 ### Screenshots
 
-![Beautiful image](/images/demo.png)
+![Beautiful image](https://raw.githubusercontent.com/potatohd404/py-exceptions/master/images/demo.png)
+
+![Another beautiful image](https://raw.githubusercontent.com/potatohd404/py-exceptions/master/images/demo2.png)
 
 ## Quickstart
 
@@ -77,14 +79,14 @@ from pyexceptions import handle_exceptions
 
 
 @handle_exceptions(is_lambda=True)
-def lambda_handler(event, context):  # noqa
+def lambda_handler(event, context):
     message = f"Hello {event['first_name']} {event['last_name']}!"
     return {
         'message': message
     }
 ```
 
-<!-- ### Exclude from stacktrace
+### Exclude from stacktrace
 
 There may be situations when you don't want to see part of stacktrace
 
@@ -105,7 +107,7 @@ def real_main():
 def wrapper():
     real_main()
 
-@handle_exceptions(exclude = 'exclude_example.wrapper')
+@handle_exceptions(exclude = 3)
 def main():
     wrapper()
 
@@ -114,19 +116,19 @@ if __name__ == '__main__':
 ```
 
 and you want to exclude all stacktrace from main to wrapper
-you need to pass `file_name.function_name` as exclude argument -->
+you need to pass `file_name.function_name` as exclude argument
 
 ### Other functions
 
 You can also want to use these functions:
 
-Make function that returns HTML:
+Make function that returns HTML and don't save the result:
 
 ```python
 from pyexceptions import handle_exceptions
 
 
-@handle_exceptions(return_html=True)
+@handle_exceptions(save=False)
 def main():
     ...
 ```
@@ -134,25 +136,24 @@ def main():
 Or you may want to write your own logic To do so you need to import the ExceptionHandler class
 
 ```python
-from pyexceptions import ExceptionHandler  # noqa
+from pyexceptions import ExceptionHandler
 ```
 
-To be clear here how it looks like:
+That's how it looks like:
 
 ```python
-
 
 class ExceptionHandler:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context: object = None, exclude: str = None):
+    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = 1):
         """Exception reporter initializer
-        
+
         Args:
             lambda_event (dict, optional): AWS lambda event. Defaults to None.
             context (object, optional): AWS lambda context. Defaults to None.
-            exclude (str, optional): Function to exclude Defaults to None.
-        
+            exclude (int, optional): Determines how many frames of traceback to exclude. Defaults 1.
+
         """
         self.__reporter = ExceptionReporter(lambda_event, context, exclude)  # noqa
 

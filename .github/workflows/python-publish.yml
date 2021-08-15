@@ -6,6 +6,9 @@ name: Upload Python Package
 on:
   release:
     types: [created]
+  push:
+    tags:
+       - '*'
 
 jobs:
   deploy:
@@ -17,7 +20,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.7'
+        python-version: '3.9'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip

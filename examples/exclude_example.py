@@ -16,7 +16,7 @@ def wrapper():
     real_main()
 
 
-@handle_exceptions(exclude='exclude_example.wrapper')
+@handle_exceptions(exclude=2)
 def main():
     wrapper()
 

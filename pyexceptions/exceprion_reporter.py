@@ -6,6 +6,7 @@ import base64
 import inspect
 import logging
 from pathlib import Path
+from functools import wraps
 from datetime import datetime
 from http.cookies import SimpleCookie
 from werkzeug.wrappers import Response
@@ -32,9 +33,13 @@ dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 class ExceptionReporter:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context=None, exclude=None):
+    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = None):
         self.filter = SafeExceptionReporterFilter()
         self.context = context
+        if exclude is None:
+            exclude = 1
+        else:
+            exclude += 1
         self.exclude = exclude
         self.exc_type, self.exc_value, self.tb = sys.exc_info()
         self.request = None
@@ -51,7 +56,7 @@ class ExceptionReporter:
             else:
                 body = _to_bytes(body, charset='utf-8')
 
-            cookies = event.get('cookie', {})
+            cookies = headers.get('cookie', {})
             if cookies != {}:
                 cookie = SimpleCookie()
                 cookie.load(cookies)
@@ -313,7 +318,7 @@ class ExceptionReporter:
             except IndexError:
                 break
             tb = exc_value.__traceback__
-        return frames[1:]
+        return frames[self.exclude:]
 
     def get_exception_traceback_frames(self, exc_value, tb):
         exc_cause = self._get_explicit_or_implicit_cause(exc_value)
@@ -383,13 +388,13 @@ class ExceptionReporter:
 class ExceptionHandler:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context: object = None, exclude: str = None):
+    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = 1):
         """Exception reporter initializer
 
         Args:
             lambda_event (dict, optional): AWS lambda event. Defaults to None.
             context (object, optional): AWS lambda context. Defaults to None.
-            exclude (str, optional): Function to exclude Defaults to None.
+            exclude (int, optional): Determines how many frames of traceback to exclude. Defaults None.
 
         """
         self.__reporter = ExceptionReporter(lambda_event, context, exclude)
@@ -403,25 +408,27 @@ class ExceptionHandler:
         return self.__reporter.get_lambda_response()
 
 
-def handle_exceptions(is_lambda: bool = False, save: bool = True,
-                      exceptions_folder: str = None, exclude: str = None, only_last: bool = True):
+def handle_exceptions(func: callable = None, is_lambda: bool = False, save: bool = True,
+                      exceptions_folder: str = None, exclude: int = None, only_last: bool = True):
     """Organize and coordinate reporting on exceptions.
 
     Args:
+        func (bool, callable): Decorator function. You don't have to set it up yourself.
         is_lambda (bool, optional): Set true if you want to handle lambda function. Defaults to False.
         save (bool, optional): Set true if you want the function to save html. Defaults to True.
         exceptions_folder (str, optional): Sets the exceptions folder. Defaults to working_directory/handled_exceptions.
-        exclude (str, optional): Determines which part of stacktrace to exclude. Defaults to None.
+        exclude (int, optional): Determines how many frames of traceback to exclude. Defaults None.
         only_last (bool, optional): Determines whether only last report should be saved. Defaults to True.
 
     Raises:
         OSError: If file was not written correctly this error will raise
     """
 
-    def decorator(function):
+    @wraps(func)
+    def decorator(func):
         def wrapper(*args, **kwargs):
             try:
-                return function(*args, **kwargs)
+                return func(*args, **kwargs)
             except Exception:  # noqa
                 if is_lambda:
                     return ExceptionHandler(*args[:2], exclude=exclude).get_traceback_lambda()
@@ -431,7 +438,7 @@ def handle_exceptions(is_lambda: bool = False, save: bool = True,
                     file_name = f'handled_exception_{time_string}.html'
                     folder = exceptions_folder
                     if folder is None:
-                        folder = os.path.dirname(os.path.abspath(inspect.getfile(function)))
+                        folder = os.path.dirname(os.path.abspath(inspect.getfile(func)))
                         folder = os.path.join(folder, 'handled_exceptions')
                     Path(folder).mkdir(parents=True, exist_ok=True)
                     if only_last:
@@ -451,4 +458,7 @@ def handle_exceptions(is_lambda: bool = False, save: bool = True,
 
         return wrapper
 
-    return decorator
+    if func:
+        return decorator(func)
+    else:
+        return decorator

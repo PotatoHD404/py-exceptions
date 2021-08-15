@@ -30,7 +30,7 @@ def add(value, arg):
     except (ValueError, TypeError):
         try:
             return value + arg
-        except Exception: # noqa
+        except Exception:  # noqa
             return ''
 
 
