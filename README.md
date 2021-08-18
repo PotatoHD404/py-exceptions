@@ -133,6 +133,21 @@ def main():
     ...
 ```
 
+
+Make function return production html:
+
+```python
+from pyexceptions import handle_exceptions
+
+
+@handle_exceptions(production=True)
+def main():
+    ...
+```
+
+![Beautiful image](https://raw.githubusercontent.com/potatohd404/py-exceptions/master/images/demo3.png)
+
+
 Or you may want to write your own logic To do so you need to import the ExceptionHandler class
 
 ```python
@@ -146,16 +161,17 @@ That's how it looks like:
 class ExceptionHandler:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = 1):
+    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = 1, production: bool = False):
         """Exception reporter initializer
 
         Args:
             lambda_event (dict, optional): AWS lambda event. Defaults to None.
             context (object, optional): AWS lambda context. Defaults to None.
-            exclude (int, optional): Determines how many frames of traceback to exclude. Defaults 1.
-
+            exclude (int, optional): Determines how many frames of traceback to exclude. Defaults None.
+            production (bool, optional): Determines if handler should be enabled. Defaults False.
         """
-        self.__reporter = ExceptionReporter(lambda_event, context, exclude)  # noqa
+        self.__reporter = ExceptionReporter(lambda_event=lambda_event, context=context, exclude=exclude, # noqa
+                                            production=production)
 
     def get_traceback_html(self):
         """Return HTML version of debug 500 HTTP error page."""

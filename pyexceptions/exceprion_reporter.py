@@ -33,9 +33,11 @@ dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 class ExceptionReporter:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = None):
+    def __init__(self, lambda_event: dict = None,
+                 context: object = None, exclude: int = None, production: bool = False):
         self.filter = SafeExceptionReporterFilter()
         self.context = context
+        self.production = production
         if exclude is None:
             exclude = 1
         else:
@@ -193,8 +195,14 @@ class ExceptionReporter:
         c = self.get_traceback_data()
         return t.render(**c)
 
+    @staticmethod
+    def get_production_html():
+        t = templateEnv.get_template('500-production.html')
+        return t.render()
+
     def get_lambda_response(self):
-        response = Response(self.get_traceback_html(), mimetype='text/html')
+        response = Response(self.get_traceback_html() if not self.production else self.get_production_html(),
+                            mimetype='text/html', status=500)
         headers = {}
         for key, value in response.headers:
             if key in headers:
@@ -388,16 +396,17 @@ class ExceptionReporter:
 class ExceptionHandler:
     """Organize and coordinate reporting on exceptions."""
 
-    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = 1):
+    def __init__(self, lambda_event: dict = None, context: object = None, exclude: int = 1, production: bool = False):
         """Exception reporter initializer
 
         Args:
             lambda_event (dict, optional): AWS lambda event. Defaults to None.
             context (object, optional): AWS lambda context. Defaults to None.
             exclude (int, optional): Determines how many frames of traceback to exclude. Defaults None.
-
+            production (bool, optional): Determines if handler should be enabled. Defaults False.
         """
-        self.__reporter = ExceptionReporter(lambda_event, context, exclude)
+        self.__reporter = ExceptionReporter(lambda_event=lambda_event, context=context, exclude=exclude,
+                                            production=production)
 
     def get_traceback_html(self):
         """Return HTML version of debug 500 HTTP error page."""
@@ -409,7 +418,8 @@ class ExceptionHandler:
 
 
 def handle_exceptions(func: callable = None, is_lambda: bool = False, save: bool = True,
-                      exceptions_folder: str = None, exclude: int = None, only_last: bool = True):
+                      exceptions_folder: str = None, exclude: int = None, only_last: bool = True,
+                      production: bool = False):
     """Organize and coordinate reporting on exceptions.
 
     Args:
@@ -419,6 +429,7 @@ def handle_exceptions(func: callable = None, is_lambda: bool = False, save: bool
         exceptions_folder (str, optional): Sets the exceptions folder. Defaults to working_directory/handled_exceptions.
         exclude (int, optional): Determines how many frames of traceback to exclude. Defaults None.
         only_last (bool, optional): Determines whether only last report should be saved. Defaults to True.
+        production (bool, optional): Determines if handler should be enabled. Defaults False.
 
     Raises:
         OSError: If file was not written correctly this error will raise
@@ -431,8 +442,8 @@ def handle_exceptions(func: callable = None, is_lambda: bool = False, save: bool
                 return func(*args, **kwargs)
             except Exception:  # noqa
                 if is_lambda:
-                    return ExceptionHandler(*args[:2], exclude=exclude).get_traceback_lambda()
-                html = ExceptionHandler(exclude=exclude).get_traceback_html()
+                    return ExceptionHandler(*args[:2], exclude=exclude, production=production).get_traceback_lambda()
+                html = ExceptionHandler(exclude=exclude, production=production).get_traceback_html()
                 if save:
                     time_string = datetime.now().strftime(r"%d-%m-%Y_%H-%M-%S")
                     file_name = f'handled_exception_{time_string}.html'
